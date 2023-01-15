@@ -9,6 +9,7 @@ default = []
 
 trace = ["bevy/trace"]
 trace_chrome = ["trace", "bevy/trace_chrome"]
+transforms = []
 
 [dependencies]
 gdnative = "0.11"

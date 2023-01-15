@@ -33,10 +33,12 @@ impl Plugin for GodotCorePlugin {
             .add_plugin(bevy::time::TimePlugin)
             .add_plugin(bevy::hierarchy::HierarchyPlugin)
             .add_plugin(GodotSceneTreePlugin)
-            .add_plugin(GodotTransformsPlugin)
             .add_plugin(GodotCollisionsPlugin)
             .add_plugin(GodotSignalsPlugin)
             .add_plugin(GodotInputEventPlugin);
+
+        #[cfg(feature = "transforms")]
+        app.add_plugin(GodotTransformsPlugin);
     }
 }
 

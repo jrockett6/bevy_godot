@@ -236,10 +236,12 @@ fn create_scene_tree_entity(
                 ent.insert(ErasedGodotRef::clone(&node))
                     .insert(Name::from(node.get::<Node>().name().to_string()));
 
+                #[cfg(feature = "transforms")]
                 if let Some(spatial) = node.try_get::<Spatial>() {
                     ent.insert(Transform::from(spatial.transform().to_bevy_transform()));
                 }
 
+                #[cfg(feature = "transforms")]
                 if let Some(node2d) = node.try_get::<Node2D>() {
                     // gdnative's Transform2D has buggy modifiers
                     let mut transform = GodotTransform2D::IDENTITY.translated(node2d.position());
