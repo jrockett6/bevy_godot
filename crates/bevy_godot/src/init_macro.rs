@@ -283,6 +283,17 @@ impl InputEventWatcher {
             .send((InputEventType::Normal, input_event))
             .unwrap();
     }
+
+    #[method]
+    fn _unhandled_key_input(&mut self, input_event: Ref<InputEventKey>) {
+        let input_event: Ref<GodotInputEvent> = input_event.upcast();
+
+        self.notification_channel
+            .as_ref()
+            .unwrap()
+            .send((InputEventType::Key, input_event))
+            .unwrap();
+    }
 }
 
 lazy_static! {

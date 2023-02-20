@@ -1,5 +1,5 @@
 use crate::prelude::{
-    godot_prelude::{InputEvent as GodotInputEvent, SubClass},
+    godot_prelude::{InputEvent as GodotInputEvent, InputEventKey, SubClass},
     *,
 };
 
@@ -14,7 +14,8 @@ impl Plugin for GodotInputEventPlugin {
                 .before(Events::<UnhandledInputEvent>::update_system),
         )
         .add_event::<InputEvent>()
-        .add_event::<UnhandledInputEvent>();
+        .add_event::<UnhandledInputEvent>()
+        .add_event::<KeyInputEvent>();
     }
 }
 
@@ -36,24 +37,6 @@ impl InputEvent {
 #[derive(Debug)]
 pub struct UnhandledInputEvent(Ref<GodotInputEvent>);
 
-fn write_input_events(
-    events: NonSendMut<InputEventReader>,
-    mut unhandled_evts: EventWriter<UnhandledInputEvent>,
-    mut normal_evts: EventWriter<InputEvent>,
-) {
-    let (normal, unhandled) = events
-        .0
-        .try_iter()
-        .partition::<Vec<_>, _>(|(ty, _)| *ty == InputEventType::Normal);
-
-    normal_evts.send_batch(normal.into_iter().map(|(_, evt)| InputEvent(evt)));
-    unhandled_evts.send_batch(
-        unhandled
-            .into_iter()
-            .map(|(_, evt)| UnhandledInputEvent(evt)),
-    );
-}
-
 impl UnhandledInputEvent {
     pub fn get<T: SubClass<GodotInputEvent>>(&self) -> TRef<T> {
         self.try_get().unwrap()
@@ -64,12 +47,43 @@ impl UnhandledInputEvent {
     }
 }
 
+/// An input event from the `_unhandled_key_input` callback
+#[derive(Debug)]
+pub struct KeyInputEvent(Ref<InputEventKey>);
+
+impl KeyInputEvent {
+    pub fn get(&self) -> TRef<InputEventKey> {
+        self.try_get().unwrap()
+    }
+
+    pub fn try_get(&self) -> Option<TRef<InputEventKey>> {
+        unsafe { self.0.assume_safe().cast() }
+    }
+}
+
 #[doc(hidden)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum InputEventType {
-    Normal,
     Unhandled,
+    Normal,
+    Key,
 }
 
 #[doc(hidden)]
 pub struct InputEventReader(pub std::sync::mpsc::Receiver<(InputEventType, Ref<GodotInputEvent>)>);
+
+fn write_input_events(
+    events: NonSendMut<InputEventReader>,
+    mut unhandled_evts: EventWriter<UnhandledInputEvent>,
+    mut normal_evts: EventWriter<InputEvent>,
+    mut key_evts: EventWriter<KeyInputEvent>,
+) {
+    events.0.try_iter().for_each(|(tpe, event)| match tpe {
+        InputEventType::Unhandled => unhandled_evts.send(UnhandledInputEvent(event)),
+        InputEventType::Normal => normal_evts.send(InputEvent(event)),
+        InputEventType::Key => {
+            let event = event.cast::<InputEventKey>().unwrap();
+            key_evts.send(KeyInputEvent(event))
+        }
+    });
+}
